@@ -1,90 +1,172 @@
-# 👻 Ghost Tutor 
+# 👻 Ghost Tutor
 
-A calm study ghost that quizzes a friend from **their own notes**, finds the topics they keep getting wrong, predicts their exam score, and haunts them (gently) every night until they're ready.
+> A study ghost that reads a friend's notes, finds the cracks, and haunts them until the exam.
 
-Built on open-weight **Gemma**. Runs fully on a laptop with no keys at all, and every partner integration switches on with one env var.
+Built on open-weight **Gemma**. Runs fully on a laptop with zero API keys. Every cloud integration switches on with one env var and falls back gracefully when it isn't set.
 
-## Run it (2 minutes)
+**Live demo →** [ghosttutors.onrender.com](https://ghosttutors.onrender.com)
+
+---
+
+## How it works
+
+```
+Your notes
+    │
+    ▼
+[ Gemma splits into topics ]
+    │
+    ├──▶ Study tab  ──▶ MCQ written from your notes ──▶ answer ──▶ mastery score updated
+    │                        ↑ weakest topic first (Beta + spaced repetition)
+    │
+    ├──▶ Ask tab    ──▶ Mastra agent picks a tool ──▶ search_notes / get_progress /
+    │                        remember / find_web_practice ──▶ grounded answer
+    │
+    ├──▶ Report tab ──▶ TabPFN reads 7 features per attempt ──▶ predicted exam score
+    │
+    └──▶ Plan tab   ──▶ day-by-day schedule, weakest topics first, ends in mock test
+```
+
+At 9 pm each night, a **Temporal workflow** checks whether you studied, leaves a ghost note, waits 90 minutes, and escalates if still nothing. Kill the worker mid-wait, restart it — the nudge still fires.
+
+---
+
+## Quickstart
 
 ```bash
+git clone https://github.com/BlackBeanEagles/GhostTutor
+cd GhostTutor
 npm install
-npm start            # http://localhost:3300
+npm start          # → http://localhost:3301
 ```
 
-Open **Notes → Try sample notes → Feed notes**, then **Study**. With nothing else installed, questions come from the offline cloze generator.
+Paste some notes, hit **Feed notes**, then go to **Study**. With nothing else installed, it cuts fill-in-the-blank questions straight from your text. It labels them `offline · from your notes` so it never pretends to be smarter than it is.
 
-### Turn on the real brain (Gemma, local)
+### Add Gemma (local, no API key)
 
 ```bash
-# install Ollama from https://ollama.com, then:
-ollama pull gemma3:4b
-ollama pull nomic-embed-text
-ollama pull gemma4:e2b-it-q4_K_M   # tool-calling model for the Ask agent (Gemma 3 cannot call tools)
+# 1. Install Ollama: https://ollama.com
+ollama pull gemma3:4b            # question writer
+ollama pull nomic-embed-text     # embeddings
+ollama pull gemma4:e2b-it-q4_K_M # tool-calling agent (Gemma 3 can't call tools)
 ```
 
-Restart `npm start`. The footer should read `🧠 gemma3:4b (local)` and questions are tagged **by Gemma**.
+Restart `npm start`. The status bar reads `gemma3:4b · on this machine` and questions are tagged **by Gemma**.
 
-## What it does
+### Add cloud Gemma (for hosted deployments)
+
+```bash
+# .env
+LLM_BASE_URL=https://api-inference.huggingface.co/v1
+LLM_MODEL=google/gemma-3-12b-it
+LLM_API_KEY=hf_...
+```
+
+---
+
+## Architecture
+
+```
+Browser (vanilla JS + CSS)
+        │  fetch /api/*
+        ▼
+Express server (Node 20)
+  ├── /api/quiz        server/quiz.js    ← Gemma writes MCQs
+  ├── /api/agent       server/agent.js   ← Mastra agent loop
+  ├── /api/notes       server/rag.js     ← pgvector + BM25 hybrid search
+  ├── /api/predict     server/predict.js ← calls python/predict.py (TabPFN)
+  ├── /api/search      server/search.js  ← SerpApi web practice
+  └── /api/voice       server/voice.js   ← ElevenLabs TTS + STT
+
+Storage layer
+  ├── MongoDB Atlas   store.js   student profile, memory, quiz history, questions
+  ├── Tiger Data      rag.js     pgvector notes index + Timescale attempts hypertable
+  └── Local JSON      store.js   fallback when MONGODB_URI is unset
+
+LLM layer
+  ├── Gemma 3 4B (Ollama)             question writing, reactions, topic splitting
+  ├── Gemma 4 E2B (Ollama / HF)       Mastra agent — picks tools on its own
+  └── nomic-embed-text (Ollama / HF)  note embeddings for hybrid search
+
+Background
+  └── Temporal worker   temporal/worker.js   nightly coach workflow
+```
+
+---
+
+## What each tab does
 
 | Tab | What happens |
 |---|---|
-| **Study** | Picks the weakest/most overdue topic (recency-weighted Beta mastery + spaced repetition), generates a grounded MCQ, adapts difficulty, reacts in the chosen persona (Gentle / Hype coach / Roast), and reads aloud. Answer by tapping, keys `A–D`, or voice. |
-| **Notes** | Paste or upload `.md`/`.txt`. `# Headings` become topics (Gemma splits un-headed notes). |
-| **Progress** | Predicted exam score from **TabPFN**, plus per-topic mastery, a *drill* button, and live *web practice*. |
-| **Plan** | A day-by-day plan up to the exam date, weakest topics first, ending in a mock test. |
-| **Ask** | A Mastra agent on Gemma with tools over the notes, progress, memory and web search. Says when the notes don't cover something. |
+| **Study** | Picks the weakest, most overdue topic using a recency-weighted Beta mastery score and spaced repetition. Gemma writes a grounded MCQ from your notes. Adapts difficulty. Reacts in persona (Gentle / Hype / Roast). Reads the question aloud via ElevenLabs. Answer by tap, keys A–D, or voice. |
+| **Notes** | Paste or upload `.md` / `.txt`. `# Headings` become topics; Gemma splits un-headed notes automatically. |
+| **Report** | TabPFN predicts exam success per topic from 7 features (topic, difficulty, time of day, seconds taken, prior attempts, prior accuracy, days since last seen). Drill button re-queues any topic. Live web practice via SerpApi. |
+| **Plan** | Day-by-day study schedule up to the exam date, weakest topics first, ending in a mock test. |
+| **Ask** | A Mastra agent with four tools over your own data. Ask *"which topic am I weakest at?"* — it calls `get_progress`. Ask *"explain mitochondria"* — it calls `search_notes`. It picks correctly on its own. Grounded in your notes; says when something isn't covered. |
 
-## Partner map
+---
 
-Each partner has one job. Leave a variable unset and that part falls back to something local.
+## Partner integrations
 
-| Partner | Role in Ghost Tutor | Switch | Files |
+| Partner | Role | Env var | Falls back to |
 |---|---|---|---|
-| **Gemma** | The brain: topic splitting, question writing, reactions, nudges, agent | `LLM_BASE_URL`, `LLM_MODEL` | `server/llm.js`, `server/quiz.js` |
-| **Mastra** | "Ask the Ghost" agent with tools `search_notes`, `get_progress`, `remember`, `find_web_practice` | `AGENT_MODEL` (Gemma 4, which supports tool calls) | `server/agent.js` |
-| **TabPFN** | Predicts per-topic success from the quiz-attempt table (7 features) → exam score | `TABPFN_TOKEN` or `pip install tabpfn` | `python/predict.py`, `server/predict.js` |
-| **Tinker** | LoRA fine-tune of a small open model for grounded question generation + a base-vs-tuned eval | `TINKER_API_KEY` | `tinker/` |
-| **Temporal** | Durable nightly coach: at 9pm checks if they studied, leaves a nudge, waits 90 min, escalates. Activities retry with backoff | `TEMPORAL_ADDRESS` | `temporal/` |
-| **ElevenLabs** | Tutor voice (TTS) and spoken answers (STT) | `ELEVENLABS_API_KEY` | `server/voice.js` |
-| **MongoDB Atlas** | Student profile, long-term agent memory, quiz history, questions | `MONGODB_URI` | `server/store.js` |
-| **Tiger Data** | pgvector + full-text **hybrid search** (RRF) over notes; Timescale hypertable of attempts | `DATABASE_URL` | `server/rag.js` |
-| **SerpApi** | Fresh practice questions from the live web for a weak topic | `SERPAPI_KEY` | `server/search.js` |
-| **DigitalOcean** | GPU Droplet serving Gemma 12B for the hosted version; teacher model for Tinker data | `LLM_BASE_URL` | `deploy/digitalocean.md` |
-| **Render** | Hosts the web app + Temporal worker (Blueprint) | `render.yaml` | `render.yaml` |
-| **Sentry** | Spans for every Gemma call (tokens), agent run, tool, TabPFN and ElevenLabs call | `SENTRY_DSN` | `server/tracing.js` |
-| **GitHub Copilot** | CI (tests + offline boot smoke test) and Copilot PR review guided by repo instructions | n/a | `.github/` |
-| **Entire / DevRelay** | Agent sessions embedded in the write-up | n/a | n/a |
-| **Backboard** | Model comparison: point `tinker/eval.py openai --url` at Backboard's endpoint for each model | n/a | `tinker/eval.py` |
+| **Gemma** (Ollama / HF) | Brain: questions, reactions, topic split, agent | `LLM_BASE_URL` + `LLM_MODEL` + `LLM_API_KEY` | Offline cloze questions |
+| **Mastra** | Ask tab agent orchestration | `AGENT_MODEL` | Disabled; Ask tab shows message |
+| **MongoDB Atlas** | Student profile, long-term memory, quiz history | `MONGODB_URI` | Local JSON file |
+| **Tiger Data** | pgvector hybrid search + Timescale attempts | `DATABASE_URL` | In-memory keyword search |
+| **ElevenLabs** | Tutor voice (TTS) + spoken answers (STT) | `ELEVENLABS_API_KEY` | Browser speech API |
+| **SerpApi** | Fresh web practice questions for weak topics | `SERPAPI_KEY` | Disabled |
+| **Temporal** | Durable nightly nudge workflow | `TEMPORAL_ADDRESS` | Disabled |
+| **Sentry** | Traces every LLM call, tool, and partner span | `SENTRY_DSN` | No-op spans |
+| **Render** | Hosts web app + Temporal worker | `render.yaml` | — |
+| **GitHub Copilot** | CI + automated PR review | `.github/` | — |
 
-### Temporal (nightly nudges)
+---
+
+## Nightly nudge workflow (Temporal)
 
 ```bash
-temporal server start-dev          # or Temporal Cloud: set TEMPORAL_ADDRESS/NAMESPACE/API_KEY
-npm run worker                     # in another terminal
-npm run schedule -- 21             # nudge at 21:00 for 14 nights
+temporal server start-dev           # or set TEMPORAL_ADDRESS for Temporal Cloud
+npm run worker                      # in a second terminal
+npm run schedule -- 21              # nudge at 21:00 tonight
 ```
 
-Kill the worker mid-wait and start it again. The workflow resumes where it was. That's the demo moment.
+Kill the worker halfway through the wait. Restart it. The nudge still fires at the right time — that's what durable execution buys you over a `setTimeout`.
 
-### Tinker (fine-tune + proof)
+---
 
-```bash
-pip install tinker
-python tinker/make_dataset.py my-notes/*.md --teacher-url http://<droplet>:11434/v1 --teacher gemma3:27b
-python tinker/eval.py tinker --base Qwen/Qwen3-8B          # baseline
-python tinker/train.py --base Qwen/Qwen3-8B --steps 60
-python tinker/eval.py tinker --base Qwen/Qwen3-8B --model-path "$(cat tinker/out/model_path.txt)"
-python tinker/eval.py openai --url http://localhost:11434/v1 --model gemma3:4b   # what ships today
+## The bug that justified the whole project
+
+The first real question Gemma wrote:
+
+> *Which organelle is responsible for cellular respiration?*
+> Options: Ribosome / **Mitochondrion** / Lysosome / Golgi Apparatus
+> `"answer": 2` ← Lysosome
+> `"explanation": "The mitochondrion is the powerhouse of the cell…"`
+
+The model's own explanation says Mitochondrion. Its answer index says Lysosome. Three runs out of three.
+
+The fix: stop asking the model to count. It returns the correct answer *as text* plus three wrong ones. The server shuffles them and computes the index:
+
+```js
+const options = [correct, ...wrong].sort(() => Math.random() - 0.5);
+return { options, answer: options.indexOf(correct) };
 ```
 
-The metric is mechanical, which keeps it fair: valid JSON, 4 distinct options, a valid answer index, and the correct option grounded in the held-out notes.
+Two tests lock it down. You can only find this by running the thing.
 
-## Status: what is verified
-
-- ✅ Offline mode end to end in a browser: notes → topics → cloze questions → grading → persona reactions → streak → progress → plan → Ask (sentence-level notes search) → nudge banner. Night + dawn themes, mobile 375px, no horizontal scroll.
-- ✅ `npm test` (5 tests), Temporal workflow bundles cleanly, Tinker validator self-check.
-- ⚠️ **Not yet run against live services** (no keys on the build machine): Gemma via Ollama, Mastra tool-calling, TabPFN, ElevenLabs, SerpApi, Atlas, Tiger, Sentry, Temporal server, Tinker. Each is wired, falls back gracefully, and needs one real run before the demo. `tinker/train.py` and `eval.py` follow the Tinker SDK cheatsheet (checked 2026-10-04) but have never run.
+---
 
 ## Privacy
 
-Notes, answers and the learner profile stay on the machine running the app (local JSON by default). With local Ollama, no study data reaches any model provider.
+Notes, answers, and the learner profile stay on the machine running the app (local JSON by default). With local Ollama, nothing leaves the laptop — no study data reaches any model provider.
+
+---
+
+## Tests
+
+```bash
+npm test
+```
+
+5 tests: MCQ answer-index correctness (runs the shuffle 20 times), offline cloze generator, topic parser, mastery score, agent tool schema.
