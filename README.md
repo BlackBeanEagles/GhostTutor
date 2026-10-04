@@ -1,4 +1,4 @@
-# 👻 Ghost Tutor
+# 👻 Ghost Tutor 
 
 A calm study ghost that quizzes a friend from **their own notes**, finds the topics they keep getting wrong, predicts their exam score, and haunts them (gently) every night until they're ready.
 
