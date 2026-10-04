@@ -7,6 +7,12 @@ let checkedAt = 0;
 
 export async function llmAvailable() {
   if (reachable !== null && Date.now() - checkedAt < 30_000) return reachable;
+  // Cloud providers (non-Ollama) are assumed reachable if an API key is set
+  if (config.llm.apiKey && config.llm.apiKey !== 'ollama') {
+    reachable = true;
+    checkedAt = Date.now();
+    return true;
+  }
   try {
     const r = await fetch(`${config.llm.baseUrl}/models`, {
       headers: { Authorization: `Bearer ${config.llm.apiKey}` },
