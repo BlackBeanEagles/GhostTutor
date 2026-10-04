@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ghost Tutor</title>
+  <meta name="description" content="A study ghost that quizzes you from your own notes. Runs on open-weight Gemma." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 72'><path d='M32 4C17 4 8 15 8 30v36l6-5 6 5 6-5 6 5 6-5 6 5 6-5 6 5V30C56 15 47 4 32 4z' fill='%23f3ecdc' stroke='%231c2140' stroke-width='4'/><circle cx='24' cy='30' r='3.5' fill='%231c2140'/><circle cx='40' cy='30' r='3.5' fill='%231c2140'/></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Kalam:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="desk" aria-hidden="true">
+    <div class="wood"></div>
+    <div class="lamp"></div>
+    <div class="dust" id="dust"></div>
+    <div class="rings" id="rings"></div>
+    <div class="crumples" id="crumples"></div>
+
+    <!-- stationery left lying on the desk -->
+    <svg class="kit pencil" viewBox="0 0 220 26">
+      <path d="M44 3h150v20H44z" fill="#e8b93f"/><path d="M44 3h150v6H44z" fill="#f4d274"/>
+      <path d="M194 3h16a9 9 0 010 20h-16z" fill="#d87c8a"/><path d="M190 3h5v20h-5z" fill="#9aa2ad"/>
+      <path d="M44 3L14 13l30 10z" fill="#e3c89a"/><path d="M22 10L14 13l8 3z" fill="#2b2b2b"/>
+      <text x="120" y="18" font-family="IBM Plex Mono, monospace" font-size="9" fill="#8a6a1c">2B</text>
+    </svg>
+    <svg class="kit ruler" viewBox="0 0 300 34">
+      <rect width="300" height="34" rx="3" fill="#dfc78d"/><rect width="300" height="11" rx="3" fill="#ead9ab"/>
+      <g stroke="#6b5526" stroke-width="1.4" id="rulerTicks"></g>
+    </svg>
+    <svg class="kit eraser" viewBox="0 0 70 42">
+      <rect x="2" y="8" width="66" height="30" rx="4" fill="#e9a7b0"/><rect x="2" y="8" width="66" height="9" rx="4" fill="#f3c3c9"/>
+      <path d="M8 38c4-6 12-4 16 0" stroke="#c9838d" stroke-width="2" fill="none"/>
+      <g fill="#e9a7b0" opacity=".85"><ellipse cx="-6" cy="36" rx="5" ry="2.5"/><ellipse cx="-18" cy="30" rx="4" ry="2"/><ellipse cx="78" cy="34" rx="4.5" ry="2.2"/></g>
+    </svg>
+    <svg class="kit books" viewBox="0 0 170 92">
+      <g stroke="#2a2118" stroke-width="2.5" stroke-linejoin="round">
+        <rect x="6" y="62" width="150" height="24" rx="2" fill="#7b4a3a"/><rect x="6" y="62" width="150" height="6" fill="#9c6150"/>
+        <rect x="16" y="40" width="132" height="22" rx="2" fill="#3f5a6b"/><rect x="16" y="40" width="132" height="5" fill="#55788c"/>
+        <rect x="28" y="19" width="108" height="21" rx="2" fill="#6d6b3c"/><rect x="28" y="19" width="108" height="5" fill="#8d8a51"/>
+      </g>
+      <g stroke="#2a2118" stroke-width="1.6" opacity=".55">
+        <line x1="20" y1="70" x2="20" y2="80"/><line x1="142" y1="70" x2="142" y2="80"/>
+        <line x1="30" y1="48" x2="30" y2="56"/><line x1="134" y1="48" x2="134" y2="56"/>
+      </g>
+      <path d="M118 19v-9l6 4 6-4v9" fill="#c2362b"/>
+    </svg>
+    <svg class="kit marker" viewBox="0 0 150 30">
+      <rect x="18" y="5" width="104" height="20" rx="4" fill="#efd34a"/><rect x="18" y="5" width="104" height="7" rx="4" fill="#f7e68c"/>
+      <rect x="112" y="3" width="16" height="24" rx="3" fill="#d9b92c"/>
+      <path d="M18 9l-14 3 14 3z" fill="#e8a33d"/>
+      <path d="M8 11c-5 1-5 3 0 4" stroke="#c98c2c" stroke-width="2" fill="none"/>
+    </svg>
+    <svg class="kit sharp" viewBox="0 0 92 56">
+      <rect x="22" y="14" width="40" height="28" rx="4" fill="#8b93a0"/><rect x="22" y="14" width="40" height="8" rx="4" fill="#a7afbb"/>
+      <circle cx="42" cy="28" r="6" fill="#2b2b33"/>
+      <g fill="none" stroke="#e0bd6e" stroke-width="2.4">
+        <path d="M14 42c-6-5 2-12 8-7s-3 11-9 6"/><path d="M72 40c6-5-2-12-8-7s3 11 9 6"/><path d="M84 48c4-3-1-8-5-5s2 7 6 4"/>
+      </g>
+    </svg>
+    <svg class="kit clips" viewBox="0 0 90 60">
+      <path d="M12 46V18a8 8 0 1116 0v26a5 5 0 11-10 0V22" stroke="#aab3bd" stroke-width="3" fill="none"/>
+      <path d="M48 50V26a7 7 0 1114 0v22a4.5 4.5 0 11-9 0V30" stroke="#9aa4ae" stroke-width="3" fill="none" transform="rotate(26 55 38)"/>
+    </svg>
+
+    <svg class="cat" id="cat" viewBox="0 0 150 90" aria-hidden="true">
+      <path class="c-tail" d="M20 62c-14 2-16-14-6-20"/>
+      <path class="c-body" d="M24 64c0-16 10-24 28-24h34c18 0 26 10 26 24v6H24z"/>
+      <path class="c-body" d="M96 44c-2-12 4-20 14-22-2 6 0 10 4 12 8 4 12 10 12 18 0 6-4 10-12 10-12 0-17-8-18-18z"/>
+      <path class="c-body" d="M110 22l-4-14 12 8zM124 24l6-13 2 14z"/>
+      <path class="c-leg" d="M38 70v14M58 70v14M86 70v14M104 70v14"/>
+    </svg>
+    <div class="ghostwriting" id="ghostwriting"></div>
+    <svg class="moth" id="moth" viewBox="0 0 40 30">
+      <ellipse class="m-body" cx="20" cy="16" rx="2" ry="7"/>
+      <path class="m-wing l" d="M19 12C9 2 2 8 5 16c2 6 10 6 14 2z"/>
+      <path class="m-wing r" d="M21 12C31 2 38 8 35 16c-2 6-10 6-14 2z"/>
+    </svg>
+    <div class="vignette"></div>
+  </div>
+
+  <svg class="roamer" id="roamer" viewBox="0 0 64 74" aria-hidden="true"></svg>
+  <div class="blot" id="blot" aria-hidden="true"></div>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#1c2140" stroke-width="1.4"/></pattern>
+      <filter id="wobble"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="2.4"/></filter>
+    </defs>
+  </svg>
+
+  <div class="notebook">
+    <header class="masthead">
+      <div class="title-block">
+        <p class="kicker mono" id="kicker">Notebook · no subject yet</p>
+        <h1>Ghost <em>Tutor</em></h1>
+      </div>
+      <div class="meta">
+        <p class="mono streak" id="streak">streak <b>0</b> nights</p>
+        <p class="mono rig" id="statusLine" title="Everything runs on this machine"><i></i> checking…</p>
+        <button class="text-btn mono" id="themeBtn" aria-label="Switch between lamp light and daylight">lamp off</button>
+      </div>
+    </header>
+
+    <div class="book">
+    <nav class="dividers" role="tablist" aria-label="Sections">
+      <button role="tab" data-tab="study" class="active"><span class="mono">01</span> Study</button>
+      <button role="tab" data-tab="notes"><span class="mono">02</span> Notes</button>
+      <button role="tab" data-tab="progress"><span class="mono">03</span> Report</button>
+      <button role="tab" data-tab="plan"><span class="mono">04</span> Plan</button>
+      <button role="tab" data-tab="ask"><span class="mono">05</span> Ask</button>
+    </nav>
+
+    <main class="page">
+      <div class="binding" aria-hidden="true"></div>
+      <div class="ribbon" id="ribbon" aria-hidden="true"></div>
+      <aside class="margin" aria-hidden="true">
+        <svg class="doodles" id="doodles" viewBox="0 0 100 460" preserveAspectRatio="xMidYMin meet"></svg>
+        <svg class="ghost" id="ghost" viewBox="0 0 64 74">
+          <g filter="url(#wobble)">
+            <path class="g-body" d="M32 5C17 5 8 16 8 31v36c3-3 5-4 7-1 2 3 4 3 6 0s4-3 6 0 4 3 6 0 4-3 6 0 4 3 6 0 4-2 7 1V31C56 16 47 5 32 5z"/>
+            <ellipse class="g-eye" cx="24" cy="31" rx="3" ry="4"/>
+            <ellipse class="g-eye" cx="40" cy="31" rx="3" ry="4"/>
+            <path class="g-mouth" d="M27 42q5 4 10 0"/>
+          </g>
+        </svg>
+      </aside>
+
+      <!-- STUDY -->
+      <section id="tab-study" class="panel active">
+        <div class="note-pinned" id="nudge" hidden>
+          <p class="mono label">Left on your desk</p>
+          <p class="hand" id="nudgeText"></p>
+          <div class="row"><button class="text-btn mono" id="nudgePlay">play voice note</button><button class="text-btn mono" id="nudgeClose">got it</button></div>
+        </div>
+
+        <p class="hand ghost-says" id="speech">Feed me your notes and I'll keep quizzing you until you're ready.</p>
+
+        <div id="startCard" class="start">
+          <p class="tonight"><span id="tonightTitle">Tonight</span> <span class="mono" id="tonightDate"></span></p>
+          <ul class="checklist" id="checklist"></ul>
+          <p id="startHint" class="muted">Start in <b>Notes</b>: paste what you're studying.</p>
+          <button class="ink-btn" id="startBtn">Quiz me</button>
+          <svg class="doodle" viewBox="0 0 220 120" aria-hidden="true">
+            <path d="M20 96c30-50 60-70 90-40s60 10 90-30"/>
+            <path d="M190 22l10 4-6 9"/>
+            <text x="16" y="116">you are here → exam day</text>
+          </svg>
+        </div>
+
+        <article class="question" id="quizCard" hidden>
+          <p class="mono qmeta"><span id="qTopic"></span> · <span id="qDiff"></span> · <span id="qSource"></span>
+            <span class="run" id="qRun"></span>
+            <button class="text-btn mono" id="speakBtn">read aloud</button></p>
+          <h2 id="qText"></h2>
+          <ol class="answers" id="qOptions"></ol>
+          <p class="explain" id="feedback" hidden></p>
+          <div class="row q-actions">
+            <button class="text-btn mono" id="micBtn">answer by voice</button>
+            <button class="ink-btn" id="nextBtn" hidden>Next question</button>
+          </div>
+        </article>
+      </section>
+
+      <!-- NOTES -->
+      <section id="tab-notes" class="panel">
+        <div class="cols">
+          <div>
+            <div class="nameplate">
+              <p class="mono">This book belongs to</p>
+              <h2 class="hand" id="plateName">—</h2>
+              <p class="mono sub"><span id="plateSubject">—</span></p>
+            </div>
+            <label>Name<input id="pName" maxlength="40" placeholder="Rahul" /></label>
+            <label>Subject<input id="pSubject" maxlength="60" placeholder="Data Structures" /></label>
+            <label>Exam date<input id="pExam" type="date" /></label>
+            <fieldset class="moods">
+              <legend>How should the ghost talk?</legend>
+              <label class="mood">
+                <input type="radio" name="persona" value="gentle" />
+                <svg viewBox="0 0 64 74" aria-hidden="true">
+                  <path class="g-body" d="M32 5C17 5 8 16 8 31v36c3-3 5-4 7-1 2 3 4 3 6 0s4-3 6 0 4 3 6 0 4-3 6 0 4 3 6 0 4-2 7 1V31C56 16 47 5 32 5z"/>
+                  <ellipse class="g-eye" cx="24" cy="31" rx="3" ry="3.4"/><ellipse class="g-eye" cx="40" cy="31" rx="3" ry="3.4"/>
+                  <path class="g-mouth" d="M27 43q5 4 10 0"/>
+                </svg>
+                <b>Gentle</b><span>calm, kind</span>
+              </label>
+              <label class="mood">
+                <input type="radio" name="persona" value="hype" />
+                <svg viewBox="0 0 64 74" aria-hidden="true">
+                  <path class="g-body" d="M32 5C17 5 8 16 8 31v36c3-3 5-4 7-1 2 3 4 3 6 0s4-3 6 0 4 3 6 0 4-3 6 0 4 3 6 0 4-2 7 1V31C56 16 47 5 32 5z"/>
+                  <path class="g-mouth" d="M18 26l10 5-10 5M46 26l-10 5 10 5"/>
+                  <ellipse class="g-fill" cx="32" cy="46" rx="7" ry="8"/>
+                </svg>
+                <b>Coach</b><span>loud, proud</span>
+              </label>
+              <label class="mood">
+                <input type="radio" name="persona" value="roast" />
+                <svg viewBox="0 0 64 74" aria-hidden="true">
+                  <path class="g-body" d="M32 5C17 5 8 16 8 31v36c3-3 5-4 7-1 2 3 4 3 6 0s4-3 6 0 4 3 6 0 4-3 6 0 4 3 6 0 4-2 7 1V31C56 16 47 5 32 5z"/>
+                  <path class="g-mouth" d="M19 27l9 4M45 27l-9 4"/>
+                  <ellipse class="g-eye" cx="24" cy="34" rx="3" ry="3.4"/><ellipse class="g-eye" cx="40" cy="34" rx="3" ry="3.4"/>
+                  <path class="g-mouth" d="M26 46q6 1 12 -4"/>
+                </svg>
+                <b>Roast</b><span>lovingly brutal</span>
+              </label>
+            </fieldset>
+            <button class="ink-btn" id="saveProfile">Save</button>
+          </div>
+          <div>
+            <p class="mono label">Feed the ghost</p>
+            <div class="feeder">
+              <textarea id="notesText" rows="12" placeholder="# Binary Search Trees&#10;A BST keeps smaller keys on the left…"></textarea>
+              <div class="chomp" id="chomp" hidden><span></span><span></span><span></span></div>
+            </div>
+            <p class="small muted">Lines starting with <span class="mono">#</span> become topics. Or upload a .txt / .md file.</p>
+            <div class="row">
+              <label class="text-btn mono file">upload file<input type="file" id="notesFile" accept=".txt,.md,.markdown,text/plain" hidden /></label>
+              <button class="text-btn mono" id="sampleBtn">use sample notes</button>
+              <button class="ink-btn" id="uploadBtn">Add to notebook</button>
+            </div>
+            <p class="mono label" style="margin-top:24px">Chapters in the book</p>
+            <ul id="topicList" class="topics"></ul>
+            <button class="text-btn mono danger" id="clearNotes">erase all notes</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- REPORT -->
+      <section id="tab-progress" class="panel">
+        <h2 class="section-title">Report card</h2>
+        <div class="report">
+          <div class="grade">
+            <p class="mono label">Predicted exam score</p>
+            <div class="grade-mark"><span id="scoreNum">–</span><svg viewBox="0 0 200 120" class="circle-mark" aria-hidden="true"><path id="gradeCircle" d="M150 22C120 4 40 8 22 40 6 70 40 108 100 110c60 2 92-28 84-58-6-22-40-36-74-38"/></svg></div>
+            <p class="small muted" id="engineNote"></p>
+            <div class="stamp" id="stamp" hidden><span id="stampText">NEEDS WORK</span></div>
+          </div>
+          <div class="subjects">
+            <p class="mono label">By topic, weakest first</p>
+            <table class="marks" id="masteryList"></table>
+          </div>
+        </div>
+        <p class="signed">signed, <span class="sig">your ghost</span></p>
+        <div id="practiceCard" hidden>
+          <p class="mono label">From the web: practice on <span id="practiceTopic"></span></p>
+          <ul id="practiceList" class="links"></ul>
+        </div>
+      </section>
+
+      <!-- PLAN -->
+      <section id="tab-plan" class="panel">
+        <div class="taped">
+          <span class="tape tl"></span><span class="tape tr"></span>
+          <h2 class="section-title" id="planTitle">Plan</h2>
+          <table class="timetable" id="planList"></table>
+        </div>
+      </section>
+
+      <!-- ASK -->
+      <section id="tab-ask" class="panel">
+        <h2 class="section-title">Notes passed in class</h2>
+        <div id="chatLog" class="chat-log" aria-live="polite">
+          <p class="msg ghost-msg hand">Ask me anything from your notes. If your notes don't cover it, I'll say so.</p>
+        </div>
+        <form id="chatForm" class="chat-form">
+          <input id="chatInput" placeholder="Why is BST search O(log n)?" autocomplete="off" />
+          <button class="ink-btn" type="submit">Pass it over</button>
+        </form>
+      </section>
+    </main>
+    </div>
+
+    <aside class="tray" aria-label="Desk">
+      <!-- tear-off calendar: days to exam -->
+      <div class="w calendar" id="wCal" title="Click to tear off a page">
+        <div class="cal-ring"><i></i><i></i></div>
+        <div class="cal-head mono" id="calMonth">EXAM</div>
+        <div class="cal-sheet" id="calSheet">
+          <span class="cal-num" id="calNum">?</span>
+          <span class="cal-sub mono" id="calSub">set an exam date</span>
+        </div>
+      </div>
+
+      <!-- clock -->
+      <div class="w clock">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <circle cx="50" cy="50" r="46" class="face"/>
+          <g class="ticks" id="ticks"></g>
+          <line id="hH" x1="50" y1="50" x2="50" y2="28" class="hand h"/>
+          <line id="hM" x1="50" y1="50" x2="50" y2="16" class="hand m"/>
+          <line id="hS" x1="50" y1="56" x2="50" y2="12" class="hand s"/>
+          <circle cx="50" cy="50" r="2.6" class="pin"/>
+        </svg>
+        <p class="mono w-label" id="clockLabel">—</p>
+      </div>
+
+      <!-- mug fills with today's questions -->
+      <div class="w mug" title="Questions answered today">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <g class="steam"><path d="M44 30c-6-8 6-12 0-22"/><path d="M60 32c-6-8 6-12 0-22"/><path d="M76 30c-6-8 6-12 0-22"/></g>
+          <defs><clipPath id="mugIn"><path d="M30 44h62l-6 60H36z"/></clipPath></defs>
+          <rect id="coffee" x="20" y="104" width="80" height="0" clip-path="url(#mugIn)" class="coffee"/>
+          <path d="M30 44h62l-6 60H36z" class="mug-body"/>
+          <path d="M91 56c16 0 16 26-3 26" class="mug-body handle"/>
+        </svg>
+        <p class="mono w-label"><b id="mugNum">0</b>/<span id="mugGoal">20</span> today · <span id="mugAcc">–</span></p>
+      </div>
+
+      <!-- focus timer -->
+      <div class="w timer">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <circle cx="50" cy="50" r="42" class="t-track"/>
+          <circle cx="50" cy="50" r="42" class="t-fill" id="tFill"/>
+        </svg>
+        <div class="t-read"><span class="mono" id="tTime">25:00</span><button class="text-btn mono" id="tBtn">start focus</button></div>
+      </div>
+
+      <!-- sticky: what next -->
+      <div class="w sticky" id="wNext">
+        <p class="mono label">Next up</p>
+        <p class="hand" id="nextTopic">Add notes first</p>
+        <button class="text-btn mono" id="nextDrill" hidden>drill it</button>
+      </div>
+
+      <!-- tally streak + week sketch -->
+      <div class="w week">
+        <p class="mono label">This week</p>
+        <svg viewBox="0 0 210 70" id="weekChart" aria-hidden="true"></svg>
+        <p class="mono label" style="margin-top:10px">Streak</p>
+        <svg viewBox="0 0 210 34" id="tally" aria-hidden="true"></svg>
+      </div>
+    </aside>
+
+    <footer class="colophon"></footer>
+  </div>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>

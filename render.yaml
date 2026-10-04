@@ -1,0 +1,47 @@
+# Render Blueprint: the web app + the Temporal worker.
+# Gemma itself runs on a DigitalOcean GPU Droplet (see deploy/digitalocean.md); set LLM_BASE_URL to it.
+services:
+  - type: web
+    name: ghost-tutor
+    runtime: node
+    plan: starter
+    buildCommand: npm ci && pip install -r python/requirements.txt
+    startCommand: npm start
+    healthCheckPath: /api/status
+    envVars:
+      - key: LLM_BASE_URL
+        sync: false
+      - key: LLM_MODEL
+        value: gemma3:12b
+      - key: LLM_HOST_LABEL
+        value: DigitalOcean GPU
+      - key: MONGODB_URI
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: SERPAPI_KEY
+        sync: false
+      - key: TABPFN_TOKEN
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: PYTHON_BIN
+        value: python3
+
+  - type: worker
+    name: ghost-tutor-coach
+    runtime: node
+    plan: starter
+    buildCommand: npm ci
+    startCommand: npm run worker
+    envVars:
+      - key: TEMPORAL_ADDRESS
+        sync: false
+      - key: TEMPORAL_NAMESPACE
+        sync: false
+      - key: TEMPORAL_API_KEY
+        sync: false
+      - key: GHOST_URL
+        value: https://ghost-tutor.onrender.com

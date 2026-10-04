@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Boot smoke test (offline mode, no keys)
+        run: |
+          PORT=3999 node server/index.js &
+          for i in $(seq 1 30); do curl -sf localhost:3999/api/status && break; sleep 1; done
+          curl -sf -X POST localhost:3999/api/notes -H 'Content-Type: application/json' \
+            --data "$(jq -Rs '{text: .}' public/sample-notes.md)"
+          curl -sf -X POST localhost:3999/api/quiz/next -H 'Content-Type: application/json' -d '{}' | jq -e '.options | length == 4'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Tinker validator self-check
+        working-directory: tinker
+        run: python -c "from common import check, chunks_from_notes; n=open('../public/sample-notes.md').read(); assert len(chunks_from_notes(n)) >= 4; assert not check('nope', n)['json']"

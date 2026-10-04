@@ -1,0 +1,3 @@
+# Pick one:
+tabpfn-client   # cloud, needs TABPFN_TOKEN (free from Prior Labs)
+# tabpfn        # fully local, heavier install (torch)
